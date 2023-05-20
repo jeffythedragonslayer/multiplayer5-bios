@@ -1,0 +1,168 @@
+        ON816
+        PUBALL
+        ASSUME  0,0
+MEM16   macro
+        ON816
+        endm
+MEM8    macro
+        OFF16A
+        endm
+IDX16   macro
+        ON16I
+        endm
+IDX8    macro
+        OFF16I
+        endm
+;******************************************************************************
+;******************************************************************************
+;
+;       MultiPlayer 5 driver routine ver x.xx
+;       Date
+;       (C) 199x Nintendo
+;******************************************************************************
+;******************************************************************************
+; (Caution)
+; 1. Enable controller automatic read when read_mpa routine is used.
+; 2. This BIOS is for the standard controller only.
+; 3. This BIOS is called once every frame.
+;
+BANK80  GROUP   080H
+
+;==============================================================================
+;       MultiPlayer BIOS start code
+;       Please do not delete this code
+;==============================================================================
+;       DB      'START OF MULTI5 BIOS'
+
+;==============================================================================
+;       RAM define table
+;==============================================================================
+BANKEQU GROUP   0
+        ORG     0010H
+
+status  DS      1       ; status of device connection
+
+con5    DS      2       ;status of controller #5 (MPA #4)
+con4    DS      2       ;status of controller #4 (MPA #3)
+con3    DS      2       ;status of controller #3 (MPA #2)
+con2    DS      2       ;status of controller #2 (MPA #1)
+con1    DS      2       ;status of controller #1 (front connector #1)
+
+sgn5    DS      1       ;status of controller #5 (MPA #4)
+sgn4    DS      1       ;status of controller #4 (MPA #3)
+sgn3    DS      1       ;status of controller #3 (MPA #2)
+sgn2    DS      1       ;status of controller #2 (MPA #1)
+sgn1    DS      1       ;status of controller #1 (front connector #1)
+
+reg0l   DS      1       ; Work register
+reg0h   DS      1       ; Work register
+reg1l   DS      1       ; Work register
+reg1h   DS      1       ; Work register
+
+c_ad1    EQU    4016H
+c_ad2   EQU     4017H
+
+BANK80  GROUP   080H
+
+;*****************************************************************************
+; (Caution)
+; Contents of register A, B, X, Y will be destroyed after this routine.
+;
+read_mpa
+        PHP
+        IDX8
+        MEM8
+        SEP     #30H
+        STZ     <status
+
+;<automatic read of controller data enable?>
+_10
+        LDA     4212H
+        AND     #01H
+        BNE     _10
+
+;<store data of controller #1
+        LDA     4219H
+        STA     con1+1
+        LDA     4218H
+        STA     con1    ; store data of controller #1 to con1 (1 byte)
+        AND     #0FH
+        STA     sgn1
+        LDA     c_ad1
+        LSR     A
+        ROL     sgn1    ; store signature of controller #1 to sgn1
+
+;<store data of controller #2 and #3>
+        LDA     421BH
+        STA     con2+1
+        LDA     421AH
+        STA     con2    ; store data of controller #2 to con2
+        AND     #0FH
+        STA     sgn2
+        LDA     421FH
+        STA     con3+1
+        LDA     421EH
+        STA     con3    ; store data of controller #3 to con3
+        AND     #0FH
+        STA     sgn3
+        LDA     c_ad2
+        LSR     A
+        ROL     sgn2    ; store signature of controller #2 to sgn2
+        LSR     A
+        ROL     sgn3    ; store signature of controller #3 to sgn3
+
+;<output "0" to PP7>
+        LDA     #7FH
+        STA     4201H
+
+;<read and store data of controller #4 and #5>
+        LDY     #10H
+_20
+        LDA     c_ad2
+        MEM16
+        REP     #20H
+        LSR     A
+        ROL     con4    ; store data of controller #4 to con4
+        LSR     A
+        ROL     con5    ; store data of controller #5 to con5
+        MEM8
+        SEP     #20H
+        DEY
+        BNE     _20
+        LDA     con4
+        AND     #0FH
+        STA     sgn4
+        LDA     con5
+        AND     #0FH
+        STA     sgn5
+        LDA     c_ad2
+        LSR     A
+        ROL     sgn4    ;store signature of controller #4 to sgn4
+        LSR     A
+        ROL     sgn5    ;store signature of controlelr #5 to sgn5
+
+;< output "1" to PP7>
+        LDA     #0FFH
+        STA     4201H
+
+        PLP
+        RTS
+
+;==============================================================================
+;       MultiPlayer driver routine ver x.xx
+;       (Caution)
+;       When this routine is used as is, please don't delete this code.
+;       If this routine is modified, please use the following code instead.
+;       'MODIFIED FROM SHVC MULTI5 BIOS Ver x.xx'
+;
+;******************************************************************************
+        DB      'NINTENDO SHVC MULTI5 BIOS Ver x.xx'
+
+
+;******************************************************************************
+;       MultiPlayer BIOS end code
+;       Please do not delete this code
+;******************************************************************************
+        DB      'END OF MULTI5 BIOS'
+
+        END

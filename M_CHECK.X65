@@ -1,0 +1,139 @@
+		ON816
+		PUBALL
+		ASSUME	0,0
+MEM16	macro
+		ON16A
+		endm
+MEM8	macro
+		OFF16A
+		endm
+IDX16	macro
+		ON16I
+		endm
+IDX8	macro
+		OFF16I
+		endm
+;******************************************************************************
+;******************************************************************************
+;		MultiPlayer connection check routine ver x.xx
+;		Date
+;		(C) 199x Nintendo
+;******************************************************************************
+;******************************************************************************
+BANK80	GROUP	080H
+;==============================================================================
+;		MultiPlayer connection check BIOS start code
+;		Please do not delete this code
+;==============================================================================
+;		DB		'START OF MULTI5 CONNECT CHECK'
+
+;==============================================================================
+;		RAM define table
+;==============================================================================
+BANKEQU	GROUP 0
+
+	EXTERN status
+	EXTERN reg0l, reg0h, reg1l, reg1h
+	
+c_ad1	EQU	4016H
+c_ad2	EQU 4017H
+
+BANK80 GROUP 080H
+
+;******************************************************************************
+;       MultiPlayer connection check ver x.xx
+;******************************************************************************
+; (Caution)
+; Contents of register A, B, X, Y will be destroyed after this route.
+;
+check_mpa
+	PHP
+	IDX8
+	MEM8
+	SEP		#30H
+	STZ		.status
+	
+;<automatic controller read enabled?>
+_c00
+		LDA		4212H
+		AND		#01H
+		BNE		_c00
+		
+;<determine if MPA is connected or not?>
+		STZ		c_ad1	;ouput "0" to out0
+		LDA		#01H
+		STA		c_ad1	;output "1" to out0
+		LDX		#08H
+_c10
+		LDA		c_ad1
+		LSR		A
+		LSR		A
+		ROL		.reg0h	;read d1 of 4016h and store it to reg0h
+		LDA		c_ad2
+		LSR		A
+		LSR		A
+		ROL		.reg1h	;read d1 of 4017h and store it to reg1h
+		DEX
+		BNE		_c10
+
+		STZ		c_ad1	; output 0 to out0
+		LDX		#08H
+_c20
+		LDA		c_ad1
+		LSR		A
+		LSR		A
+		ROL		.reg0l	; read d1 of 4016h and store it to reg0l
+		LDA		c_ad2
+		LSR		A
+		LSR		A
+		ROL		.reg1l	; read d1 of 4017h and store it to reg1l
+		DEX
+		BNE		_c20
+;<determine if special device or MPA is connected?>
+;
+;<Check controller port1>
+		LDA     .reg0h
+		CMP     #0FFH	;Is reg0h=$FF?
+		BNE     _c30	; YES->determine if MPA or special device
+					    ; NO->branch, check connection on port2
+		LDA     .reg0l
+		CMP     #0FFh	;Is reg1h=$FF?
+		BEQ     _c30	; YES->special device connected to port1, jmp
+					    ; NO->MPA connected to port1, set status
+		LDA		#80H
+		STA		.status
+
+;<Check controller port2>
+_c30
+		LDA     .reg1h
+		CMP     #0FFH	;Is reg1h=$FF?
+		BNE     _c40	; YES->determine if MPA or special device
+					    ; NO->branch, branch and return from routine
+		LDA     .reg1l
+		CMP     #0FFh	;Is reg1h=$FF?
+		BEQ     _c40	; YES->special device connected to port2, rts
+					    ; NO->MPA connected to port2, set status
+		LDA		#40H
+        ORA     .status
+		STA		.status
+_c40
+        PLP
+        RTS
+
+;==============================================================================
+;		MultiPlayer connection check routine version x.xx
+;		(Caution)
+;		When this routine is used as is, please don't delete this code.
+;		If this routine is modified, please use the following code instead
+;		'MODIFIED FROM SHVC MULTI5 CONNECT CHECK VER x.xx'
+;
+;******************************************************************************
+		DB      'NINTENDO SHVC MULT5 CONNECT CHECK Ver1.00'
+
+;******************************************************************************
+;		MultiPlayer BIOS end code
+;		Please do not delete this code
+;******************************************************************************
+		DB      'END OF MULTI5 CONNECT CHECK'
+
+		END
